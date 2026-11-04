@@ -1,0 +1,25 @@
+{
+  "name": "sentinelx-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SentinelX — Full-Stack SOC Monitoring & SIEM-inspired Platform",
+  "scripts": {
+    "install:all": "npm --prefix frontend install && npm --prefix backend install",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend": "npm --prefix backend run build",
+    "build": "npm run build:backend && npm run build:frontend"
+  },
+  "keywords": [
+    "soc",
+    "siem",
+    "cybersecurity",
+    "threat-detection",
+    "react",
+    "express",
+    "typescript"
+  ],
+  "author": "",
+  "license": "ISC"
+}
