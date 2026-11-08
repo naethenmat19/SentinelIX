@@ -1,3 +1,6 @@
+
+import { prisma } from '../lib/prisma.js';
+
 export interface SystemHealth {
   status: 'healthy' | 'degraded' | 'down';
   service: string;
@@ -17,5 +20,15 @@ export class HealthService {
       uptimeSeconds: Math.floor(process.uptime()),
       environment: process.env.NODE_ENV || 'development',
     };
+  }
+
+  public static async getDatabaseHealth(): Promise<boolean> {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return true;
+    } catch (error) {
+      console.error('[HealthService] Database health check failed:', error);
+      return false;
+    }
   }
 }

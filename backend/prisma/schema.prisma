@@ -1,0 +1,52 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("analyst")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Alert {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  severity    String
+  status      String   @default("open")
+  source      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Incident {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  severity    String
+  status      String   @default("open")
+  assignedTo  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SecurityEvent {
+  id            String   @id @default(uuid())
+  eventType     String
+  sourceIp      String
+  destinationIp String?
+  description   String
+  severity      String
+  timestamp     DateTime @default(now())
+  createdAt     DateTime @default(now())
+}
