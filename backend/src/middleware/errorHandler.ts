@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 
 export interface CustomError extends Error {
   statusCode?: number;
+  code?: string;
 }
 
 export const errorHandler = (
@@ -10,15 +11,23 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction
 ): void => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
+  let statusCode = err.statusCode || 500;
+  let message = err.message || 'Internal Server Error';
+
+  // Handle Prisma record-not-found errors
+  if (err.code === 'P2025') {
+    statusCode = 404;
+    message = 'Resource not found';
+  }
 
   res.status(statusCode).json({
     success: false,
     error: {
       message,
       statusCode,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      ...(process.env.NODE_ENV === 'development' && {
+        stack: err.stack,
+      }),
     },
   });
 };
