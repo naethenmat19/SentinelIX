@@ -1,6 +1,6 @@
 # SentinelX — Technical Analysis and System Audit
 
-**Document Version:** 1.1.0 (Audited & Corrected Edition)  
+**Document Version:** 1.2.0 (Final Audited & Corrected Edition)  
 **Audit Date:** November 10, 2026  
 **Auditor:** Senior Full-Stack Software Engineer, Software Architect & Cybersecurity Analyst  
 **Target Repository:** SentinelX (`SentinelIX`)  
@@ -16,8 +16,8 @@ This audit evaluates the codebase as of commit `4cbc367` (`docs: update project 
 
 ### High-Level Audit Findings
 
-1. **Static Build Verification vs. Runtime Testing**: Both the backend and frontend compile cleanly without TypeScript or Vite build errors. However, **this audit performed static code analysis and build verification only**. No live database instance was active, and live end-to-end runtime integration, network socket latency, and database connectivity were not executed or verified at runtime.
-2. **Data Consumption: Dynamic Counts vs. Static Indicators**: Primary dashboard metric totals (Total Alerts, Open Incidents, Critical Alerts, Total Security Events), 7-day activity area chart trends, severity breakdown percentages, top event type bars, and recent alert tables derive their data from backend database records. Conversely, **KPI percentage comparisons (`+12.5%`, `-8.2%`, etc. "Compared to last week") and subsystem monitoring statuses ("Event Ingestion" and "Alert Monitoring") are hardcoded static strings**.
+1. **Static Build Verification vs. Runtime Testing**: Both the backend and frontend compile cleanly without TypeScript or Vite build errors. However, **this audit performed static code analysis and build verification only**. No live database instance was active, and live end-to-end runtime integration, network socket latency, and database connectivity were not executed or verified at runtime. Frontend health-check requests were verified at the code level, but successful runtime checks against an active PostgreSQL instance were not performed during this audit.
+2. **Data Consumption: Dynamic Counts vs. Static Indicators**: Primary dashboard metric totals (Total Alerts, Open Incidents, Critical Alerts, Total Security Events), 7-day activity area chart trends, severity breakdown percentages, top event type bars, and recent alert tables derive their data from fetched database records. Conversely, **KPI percentage comparisons (`+12.5%`, `-8.2%`, etc. "Compared to last week") and subsystem monitoring statuses ("Event Ingestion" and "Alert Monitoring") are hardcoded static strings**.
 3. **Backend API vs. Frontend Capability Disparity**: A significant disparity exists between backend capabilities and frontend exposure. Most notably, **the backend REST API provides full CRUD capabilities for Alerts** (create, read, update, delete), whereas **the current frontend Alerts page is strictly read-only**, offering no UI for alert creation, status transitions, or deletion.
 4. **Core Architectural Gaps**:
    - **No Automated Detection Engine or Event Generator**: Security events and alerts exist solely as independent database entities. There is currently no rule engine, threshold monitor, or background worker that dynamically processes raw security events to generate alerts.
@@ -38,7 +38,7 @@ This audit evaluates the codebase as of commit `4cbc367` (`docs: update project 
 | **Target Architecture** | Decoupled Client-Server (RESTful API) |
 | **Frontend Runtime** | React 18.3.1, TypeScript 5.6.3, Vite 6.0.1, Tailwind CSS 3.4.16, Recharts 3.10.1 |
 | **Backend Runtime** | Node.js v22.20.0, Express 4.21.2, TypeScript 5.6.3 (`NodeNext`), `tsx` 4.19.2 |
-| **Database & ORM** | PostgreSQL 16/17, Prisma ORM 7.10.1 (`@prisma/client`, `@prisma/adapter-pg`, `pg` 8.23.1) |
+| **Database & ORM** | PostgreSQL, Prisma ORM 7.10.1 (`@prisma/client`, `@prisma/adapter-pg`, `pg` 8.23.1) |
 | **Security Utilities** | `helmet` 8.0.0, `cors` 2.8.5, `bcryptjs` 3.0.3 |
 | **Current Git Commit** | `4cbc367` (Clean working tree) |
 | **Verification Level** | Static Code Analysis, AST Typechecking, Production Build Verification |
@@ -54,7 +54,9 @@ SentinelIX/
 ├── README.md                          # Public repository documentation & setup instructions
 ├── docs/
 │   ├── ARCHITECTURE.md                # High-level architecture specification
-│   └── SentinelX_Technical_Analysis.md # Comprehensive system audit report (this document)
+│   ├── SentinelX_Academic_Project_Report.md # University-level project report
+│   ├── SentinelX_Technical_Analysis.md # Comprehensive system audit report (this document)
+│   └── images/                        # Destination directory for application screenshots and diagrams
 │
 ├── frontend/                          # Client-side Single Page Application
 │   ├── public/
@@ -177,19 +179,27 @@ The frontend is an SPA created using **React 18.3.1**, styled with **Tailwind CS
 - **Components & Visualizations**:
   - Four KPI Summary Cards: Total Alerts, Open Incidents, Critical Alerts, Total Security Events.
   - 7-Day Activity Trend: Rendered via Recharts `<AreaChart>` with custom linear gradients (`#3B82F6`), Cartesian grids, and responsive tooltips.
-  - Severity Distribution: Rendered via Recharts `<PieChart>` donut with custom SVG filter glows (`#donutGlow`), KaTeX/SVG linear gradients, and a central percentage counter.
+  - Severity Distribution: Rendered via Recharts `<PieChart>` donut with custom SVG filter glows (`#donutGlow`), SVG linear gradients, and a central percentage counter.
   - Recent Alerts Table: Displays the top 4 most recent alerts with status and source indicators.
   - System Status Grid: 4-component health monitor covering Backend API, PostgreSQL Database, Event Ingestion, and Alert Monitoring.
 - **Data Reality Check — Dynamic vs. Static Elements**:
-  - **Actual Backend Data**:
-    - Primary Metric Counts: Total alerts (`alerts.length`), open incidents (`incidents.filter(i => i.status === 'open').length`), critical alerts (`alerts.filter(a => a.severity === 'critical').length`), and total events (`securityEvents.length`) reflect actual database records.
-    - 7-Day Activity Chart: Groups real security event timestamps into days dynamically.
+  - **Database-Backed Data**:
+    - Primary Metric Counts: Total alerts (`alerts.length`), open incidents (`incidents.filter(i => i.status === 'open').length`), critical alerts (`alerts.filter(a => a.severity === 'critical').length`), and total events (`securityEvents.length`) reflect fetched database records.
+    - 7-Day Activity Chart: Groups security event timestamps into days dynamically.
     - Severity Distribution: Computes exact percentage breakdown from fetched alert records.
     - Recent Alerts Table: Renders the 4 most recently created alerts from the database.
-    - Health Checks: Queries `/api/health` and `/api/health/database` for live server uptime and PostgreSQL ping status.
+    - Health Checks: Queries `/api/health` and `/api/health/database` for server uptime and PostgreSQL query response. (Frontend requests were verified; successful runtime execution against an active database requires a running database instance).
   - **Static / Hardcoded Elements**:
     - **KPI Trend Comparisons**: The percentage change badges (`+12.5%`, `-8.2%`, `+3.1%`, `+18.4%`) and the subtitle `"Compared to last week"` are **hardcoded static strings** (`Overview.tsx:96-129`). No historical database queries or trend computations exist.
     - **Subsystem Health Indicators**: "Event Ingestion" and "Alert Monitoring" cards have hardcoded descriptions and display a static status of `"Not monitored"` (`Overview.tsx:227-235`), as no dedicated backend ingestion or detection workers exist.
+
+**Figure 1. SentinelX SOC Overview Dashboard**
+
+![Figure 1: SentinelX SOC Overview Dashboard](./images/sentinelx-overview.png)
+
+*Note: Screenshot to be inserted after final application capture.*
+
+---
 
 #### 2. Security Alerts (`Alerts.tsx` — [frontend/src/pages/Alerts.tsx](file:///d:/Project%20Data/SentinelIX/frontend/src/pages/Alerts.tsx))
 - **Purpose**: Security alert triage queue.
@@ -197,6 +207,14 @@ The frontend is an SPA created using **React 18.3.1**, styled with **Tailwind CS
 - **Backend vs. Frontend Disparity**:
   - **Backend Capability**: The Express API fully supports all CRUD operations on alerts: creating new alerts (`POST /api/alerts`), retrieving details (`GET /api/alerts/:id`), updating alert metadata/status (`PATCH /api/alerts/:id`), and deleting alerts (`DELETE /api/alerts/:id`).
   - **Frontend Implementation**: The `Alerts.tsx` page is **strictly read-only**. It does not provide any form, modal, or button to create alerts, no dropdown or action to change an alert's status (e.g., from `open` to `investigating` or `resolved`), and no delete controls. Furthermore, `frontend/src/services/alert.service.ts` only implements `getAlerts()`, omitting API client wrappers for mutations.
+
+**Figure 2. Security Alerts Management Interface**
+
+![Figure 2: Security Alerts Management Interface](./images/sentinelx-alerts.png)
+
+*Note: Screenshot to be inserted after final application capture.*
+
+---
 
 #### 3. Incident Management (`Incidents.tsx` — [frontend/src/pages/Incidents.tsx](file:///d:/Project%20Data/SentinelIX/frontend/src/pages/Incidents.tsx))
 - **Purpose**: Lifecycle tracking and analyst assignment for security incidents.
@@ -208,7 +226,15 @@ The frontend is an SPA created using **React 18.3.1**, styled with **Tailwind CS
   - `incidents`: Main list state updated optimistically/locally upon successful API mutations.
   - `assignmentDrafts`: Key-value dictionary tracking uncommitted input keystrokes per incident ID.
   - `updatingIncidentId`: Tracks active in-flight network requests to disable inputs and display loaders.
-- **Data Reality Check**: Fully interactive, full-stack connected with real backend persistence.
+- **Data Reality Check**: Fully interactive, full-stack connected with database-backed API persistence.
+
+**Figure 3. Incident Management Interface**
+
+![Figure 3: Incident Management Interface](./images/sentinelx-incidents.png)
+
+*Note: Screenshot to be inserted after final application capture.*
+
+---
 
 #### 4. Security Events Log Explorer (`SecurityEvents.tsx` — [frontend/src/pages/SecurityEvents.tsx](file:///d:/Project%20Data/SentinelIX/frontend/src/pages/SecurityEvents.tsx))
 - **Purpose**: SIEM event log browser.
@@ -218,17 +244,33 @@ The frontend is an SPA created using **React 18.3.1**, styled with **Tailwind CS
   - Client-side search matching against `eventType`, `description`, `sourceIp`, and `destinationIp`.
   - Client-side severity filtering dropdown (`all`, `critical`, `high`, `medium`, `low`).
   - Manual data refresh button triggering `fetchEvents(true)` with spin animation.
-- **Data Reality Check**: Consumes live backend data from `/api/security-events`. All filtering and search are executed in-memory via React `useMemo`.
+- **Data Reality Check**: Consumes database-backed API data from `/api/security-events`. All filtering and search operations are executed in frontend memory via React `useMemo` after records are retrieved.
+
+**Figure 4. Security Events Explorer**
+
+![Figure 4: Security Events Explorer](./images/sentinelx-security-events.png)
+
+*Note: Screenshot to be inserted after final application capture.*
+
+---
 
 #### 5. Threat Analytics (`Analytics.tsx` — [frontend/src/pages/Analytics.tsx](file:///d:/Project%20Data/SentinelIX/frontend/src/pages/Analytics.tsx))
 - **Purpose**: Visual intelligence and threat metric distribution analysis.
 - **Visualizations**:
   - Four Metric Cards: Total Events, Critical Events, High Severity Events, Active Incidents.
   - Security Activity Trend: Recharts `<AreaChart>` showing 7-day event volume.
-  - Severity Distribution: Recharts `<PieChart>` donut with glow filter.
+  - Severity Distribution: Recharts `<PieChart>` donut with SVG glow filter.
   - Top Threat Event Types: Recharts `<BarChart>` (horizontal layout) displaying the top 6 most frequent `eventType` categories.
 - **State & Computation**: Fetches events, alerts, and incidents concurrently; derives all chart aggregations dynamically via `useMemo` hooks.
-- **Data Reality Check**: Derived from live database records.
+- **Data Reality Check**: Derived from fetched database records.
+
+**Figure 5. Security Analytics Dashboard**
+
+![Figure 5: Security Analytics Dashboard](./images/sentinelx-analytics.png)
+
+*Note: Screenshot to be inserted after final application capture.*
+
+---
 
 #### 6. Analyst Management (`Analysts.tsx` — [frontend/src/pages/Analysts.tsx](file:///d:/Project%20Data/SentinelIX/frontend/src/pages/Analysts.tsx))
 - **Purpose**: SOC team administration and role assignment.
@@ -236,7 +278,13 @@ The frontend is an SPA created using **React 18.3.1**, styled with **Tailwind CS
   - Summary metrics: Total Analysts, Senior Analysts, Administrators.
   - Analyst registration form: Collects Full Name, Email Address, Password (min 8 chars), and Role (`analyst`, `senior_analyst`, `admin`). Submits via `createUser()`.
   - Analyst Grid: Cards showing user initial avatar, name, email, platform role badge, and joined date.
-- **Data Reality Check**: Live backend connected; passwords are encrypted with bcrypt on the backend and omitted from the frontend payload.
+- **Data Reality Check**: Live backend connected; passwords are hashed using bcryptjs on the backend before storage and are omitted from user retrieval payloads.
+
+**Figure 6. Analyst Management Interface**
+
+![Figure 6: Analyst Management Interface](./images/sentinelx-analysts.png)
+
+*Note: Screenshot to be inserted after final application capture.*
 
 ---
 
@@ -263,13 +311,14 @@ HTTP Request
      │
      ▼
 [Express App: app.ts]
-     │──► [Middleware: helmet()]
-     │──► [Middleware: cors({ origin: config.corsOrigin, credentials: true })]
-     │──► [Middleware: express.json(), express.urlencoded()]
-     │──► [Middleware: morgan('dev')]
+     │──► 1. [Middleware: helmet()]
+     │──► 2. [Middleware: cors({ origin: config.corsOrigin, credentials: true })]
+     │──► 3. [Middleware: express.json()]
+     │──► 4. [Middleware: express.urlencoded({ extended: true })]
+     │──► 5. [Middleware: morgan('dev')] (when NODE_ENV !== 'test')
      │
      ▼
-[Master Router: routes/index.ts]
+[Master Router: routes/index.ts (mounted at /api)]
      │
      ├──► /api/health           ──► health.routes.ts         ──► HealthController         ──► HealthService         ──► Prisma ($queryRaw)
      ├──► /api/alerts           ──► alert.routes.ts          ──► AlertController          ──► AlertService          ──► Prisma (Alert)
@@ -284,14 +333,22 @@ HTTP Request
 [Global Error Handler: errorHandler.ts]
 ```
 
-### 5.2 Component Breakdown
+### 5.2 Component Breakdown and Middleware Order
 
 1. **`server.ts`** ([backend/src/server.ts](file:///d:/Project%20Data/SentinelIX/backend/src/server.ts)):
    - Imports `createApp()`, initiates HTTP listener on `config.port` (default 5000).
    - Implements graceful shutdown traps on `SIGINT` and `SIGTERM` invoking `server.close()`.
 2. **`app.ts`** ([backend/src/app.ts](file:///d:/Project%20Data/SentinelIX/backend/src/app.ts)):
    - Express application factory function enabling isolated testing with Supertest without port binding collisions.
-   - Registers security headers via `helmet()`, cross-origin resource access via `cors()`, body parsers, dev logging via `morgan()`, and mounts `/api` routes.
+   - **Verified Middleware Order**:
+     1. `app.use(helmet())` — Attaches default HTTP security headers.
+     2. `app.use(cors({ origin: config.corsOrigin, credentials: true }))` — Sets cross-origin headers for browser requests.
+     3. `app.use(express.json())` — Parses JSON request bodies.
+     4. `app.use(express.urlencoded({ extended: true }))` — Parses URL-encoded form bodies.
+     5. `if (config.nodeEnv !== 'test') { app.use(morgan('dev')); }` — Logs transient HTTP request metadata to stdout.
+     6. `app.use('/api', apiRouter)` — Mounts modular API route handlers.
+     7. `app.use(notFoundHandler)` — Intercepts unmatched paths returning 404.
+     8. `app.use(errorHandler)` — Centralized error handler capturing forwarded exceptions.
 3. **`config/index.ts`** ([backend/src/config/index.ts](file:///d:/Project%20Data/SentinelIX/backend/src/config/index.ts)):
    - Parses `.env` using `dotenv`. Exports typed `AppConfig` (`port`, `nodeEnv`, `corsOrigin`).
 4. **`lib/prisma.ts`** ([backend/src/lib/prisma.ts](file:///d:/Project%20Data/SentinelIX/backend/src/lib/prisma.ts)):
@@ -303,11 +360,11 @@ HTTP Request
      const adapter = new PrismaPg({ connectionString });
      export const prisma = new PrismaClient({ adapter });
      ```
-   - Guards against missing `DATABASE_URL` during startup.
-5. **`middleware/errorHandler.ts`** ([backend/src/middleware/errorHandler.ts](file:///d:/Project%20Data/SentinelIX/backend/src/middleware/errorHandler.ts)):
-   - Captures unhandled synchronous and asynchronous Express errors.
-   - Detects Prisma record-not-found error code `P2025` and maps it to HTTP 404 (`Resource not found`).
-   - Suppresses error stack traces when `NODE_ENV !== 'development'`.
+   - Passes the PostgreSQL connection URI to `@prisma/adapter-pg`, which utilizes standard `pg.Pool` connection pooling internally.
+5. **Asynchronous Error Forwarding & `middleware/errorHandler.ts`** ([backend/src/middleware/errorHandler.ts](file:///d:/Project%20Data/SentinelIX/backend/src/middleware/errorHandler.ts)):
+   - **Express 4 Asynchronous Handling**: In Express 4, unhandled promise rejections inside `async` route handlers are not caught automatically by default. SentinelX addresses this by explicitly enclosing controller logic within `try { ... } catch (error) { next(error); }` blocks, manually passing rejected exceptions to `next(error)`.
+   - The global `errorHandler` detects Prisma record-not-found error code `P2025` and maps it to HTTP 404 (`Resource not found`).
+   - Suppresses stack traces when `NODE_ENV !== 'development'`.
 6. **`middleware/notFoundHandler.ts`** ([backend/src/middleware/notFoundHandler.ts](file:///d:/Project%20Data/SentinelIX/backend/src/middleware/notFoundHandler.ts)):
    - Standardized 404 response formatter for unmatched API paths (`Cannot GET /unknown`).
 
@@ -321,17 +378,17 @@ HTTP Request
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **GET** | `/api/health` | `HealthController.getHealth` → `HealthService.getHealth` | None | `{ success: true, data: { status, service, version, timestamp, uptimeSeconds, environment } }` | `200` | Consumed (`Overview.tsx`) |
 | **GET** | `/api/health/database` | `HealthController.getDatabaseHealth` → `HealthService.getDatabaseHealth` | None | `{ success: boolean, data: { database: 'connected' \| 'disconnected', timestamp } }` | `200`, `503` | Consumed (`Overview.tsx`) |
-| **GET** | `/api/alerts` | `AlertController.getAllAlerts` → `AlertService.getAllAlerts` | None | `{ success: true, data: Alert[] }` | `200`, `500` | Consumed (`Alerts.tsx`, `Topbar.tsx`, `Overview.tsx`, `Analytics.tsx`) |
+| **GET** | `/api/alerts` | `AlertController.getAllAlerts` → `AlertService.getAllAlerts` | None | `{ success: true, data: Alert[] }` | `200`, `500` | Consumed across 4 pages |
 | **GET** | `/api/alerts/:id` | `AlertController.getAlertById` → `AlertService.getAlertById` | Params: `id` (UUID) | `{ success: true, data: Alert }` | `200`, `404`, `500` | **Not consumed in frontend** |
 | **POST** | `/api/alerts` | `AlertController.createAlert` → `AlertService.createAlert` | Body: `{ title, description, severity, source }` | `{ success: true, message: string, data: Alert }` | `201`, `400`, `500` | **Not consumed in frontend** |
 | **PATCH** | `/api/alerts/:id` | `AlertController.updateAlert` → `AlertService.updateAlert` | Params: `id`; Body: `{ title?, description?, severity?, status?, source? }` | `{ success: true, message: string, data: Alert }` | `200`, `400`, `404`, `500` | **Not consumed in frontend** |
 | **DELETE** | `/api/alerts/:id` | `AlertController.deleteAlert` → `AlertService.deleteAlert` | Params: `id` (UUID) | `{ success: true, message: string }` | `200`, `404`, `500` | **Not consumed in frontend** |
-| **GET** | `/api/incidents` | `IncidentController.getAllIncidents` → `IncidentService.getAllIncidents` | None | `{ success: true, data: Incident[] }` | `200`, `500` | Consumed (`Incidents.tsx`, `Overview.tsx`, `Analytics.tsx`) |
+| **GET** | `/api/incidents` | `IncidentController.getAllIncidents` → `IncidentService.getAllIncidents` | None | `{ success: true, data: Incident[] }` | `200`, `500` | Consumed across 3 pages |
 | **GET** | `/api/incidents/:id` | `IncidentController.getIncidentById` → `IncidentService.getIncidentById` | Params: `id` (UUID) | `{ success: true, data: Incident }` | `200`, `404`, `500` | **Not consumed in frontend** |
 | **POST** | `/api/incidents` | `IncidentController.createIncident` → `IncidentService.createIncident` | Body: `{ title, description, severity, assignedTo? }` | `{ success: true, message: string, data: Incident }` | `201`, `400`, `500` | Consumed (`Incidents.tsx`) |
 | **PATCH** | `/api/incidents/:id` | `IncidentController.updateIncident` → `IncidentService.updateIncident` | Params: `id`; Body: `{ title?, description?, severity?, status?, assignedTo? }` | `{ success: true, message: string, data: Incident }` | `200`, `400`, `404`, `500` | Consumed (`Incidents.tsx`) |
 | **DELETE** | `/api/incidents/:id` | `IncidentController.deleteIncident` → `IncidentService.deleteIncident` | Params: `id` (UUID) | `{ success: true, message: string }` | `200`, `404`, `500` | **Not consumed in frontend** |
-| **GET** | `/api/security-events` | `SecurityEventController.getAllEvents` → `SecurityEventService.getAllEvents` | None | `{ success: true, data: SecurityEvent[] }` | `200`, `500` | Consumed (`SecurityEvents.tsx`, `Overview.tsx`, `Analytics.tsx`) |
+| **GET** | `/api/security-events` | `SecurityEventController.getAllEvents` → `SecurityEventService.getAllEvents` | None | `{ success: true, data: SecurityEvent[] }` | `200`, `500` | Consumed across 3 pages |
 | **GET** | `/api/security-events/:id` | `SecurityEventController.getEventById` → `SecurityEventService.getEventById` | Params: `id` (UUID) | `{ success: true, data: SecurityEvent }` | `200`, `404`, `500` | **Not consumed in frontend** |
 | **POST** | `/api/security-events` | `SecurityEventController.createEvent` → `SecurityEventService.createEvent` | Body: `{ eventType, sourceIp, destinationIp?, description, severity }` | `{ success: true, message: string, data: SecurityEvent }` | `201`, `400`, `500` | **Not consumed in frontend** |
 | **GET** | `/api/users` | `UserController.getAllUsers` → `UserService.getAllUsers` | None | `{ success: true, data: UserSafe[] }` (omits `passwordHash`) | `200`, `500` | Consumed (`Analysts.tsx`) |
@@ -341,15 +398,21 @@ HTTP Request
 ### 6.2 Identified API Inconsistencies & Flaws
 
 1. **Inconsistent Error Response Envelopes**:
-   - `AlertController` and `IncidentController` return: `{ success: false, message: '...' }`.
-   - `SecurityEventController` and `errorHandler.ts` return: `{ success: false, error: { message: '...', statusCode: 400 } }`.
-   - *Impact*: In the frontend `api.ts`, errors are parsed as `result.message || 'Something went wrong'`. When an error is handled by `errorHandler.ts`, `result.message` is `undefined`, causing the frontend to report a generic error rather than the actual server error message.
-2. **Missing Pagination & Filtering on Endpoints**:
-   - `GET /api/security-events` and `GET /api/alerts` return full table dumps without `limit`, `offset`, `page`, or date-range query filters. In a real SOC environment with millions of events, this will result in server memory exhaustion and browser crashes.
+   - `AlertController` and `IncidentController` validation failures return:
+     ```json
+     { "success": false, "message": "Invalid alert data or missing required fields" }
+     ```
+   - `SecurityEventController` and `errorHandler.ts` return:
+     ```json
+     { "success": false, "error": { "message": "Resource not found", "statusCode": 404 } }
+     ```
+   - *Impact*: In the frontend `api.ts`, errors are parsed via `throw new Error(result.message || 'Something went wrong')`. When an error is handled by `errorHandler.ts` (which nests the text under `result.error.message`), `result.message` evaluates to `undefined`, causing the frontend to report the generic fallback `'Something went wrong'`.
+2. **Missing Pagination & Scalability Implications**:
+   - `GET /api/security-events` and `GET /api/alerts` return full table dumps without `limit`, `offset`, `page`, or date-range query filters. As the dataset expands, unpaginated queries can significantly increase server memory consumption, database query workload, and network response times.
 3. **Unprotected User Registration**:
-   - `POST /api/users` is completely open to the public; anyone with network access can create new Administrator accounts without authenticating.
+   - `POST /api/users` is open to unauthenticated requests; any client on the network can create new accounts with `role: "admin"`.
 4. **Duplicate Email Error Unhandled**:
-   - In `UserController.createUser`, if an email already exists in the database, Prisma throws error `P2002` (unique constraint failure). The controller does not intercept `P2002`, propagating it to `errorHandler.ts`, which returns a 500 Internal Server Error instead of a 409 Conflict with a clear message.
+   - In `UserController.createUser`, if an email already exists, Prisma throws error `P2002` (unique constraint violation). The controller does not intercept `P2002`, propagating it to `errorHandler.ts`, which returns a 500 Internal Server Error instead of a 409 Conflict with a clean error message.
 
 ---
 
@@ -463,17 +526,30 @@ erDiagram
     }
 ```
 
+**Figure 7. SentinelX Database Entity Relationship Diagram**
+
+![Figure 7: SentinelX Database Entity Relationship Diagram](./images/sentinelx-er-diagram.png)
+
+*Note: Diagram export to be inserted after final application capture.*
+
+---
+
 ### 7.3 Database Structural Observations
 
-1. **Zero Relational Integrity**:
-   - `Incident.assignedTo` stores an arbitrary analyst name or string instead of referencing `User.id` via a foreign key constraint.
-   - An `Alert` cannot be linked to the `SecurityEvent` records that caused it.
-   - An `Incident` cannot be linked to the `Alert` records that were escalated into it.
-2. **Text Primitive Typing Instead of PostgreSQL Enums**:
-   - `severity` (`critical`, `high`, `medium`, `low`), `status` (`open`, `investigating`, `resolved`, `closed`), and `role` (`analyst`, `senior_analyst`, `admin`) are stored as unconstrained `TEXT` columns in PostgreSQL. Validation is performed only at the application controller layer.
-3. **Absence of Performance Indexes (Architectural Scalability Finding)**:
+1. **Missing Foreign Keys and Loose References**:
+   - Confirmed by `schema.prisma` and `migration.sql`, the schema contains **zero foreign-key constraints**.
+   - `Incident.assignedTo` is an unconstrained, nullable string field (`TEXT`). It is **not linked to or validated against an existing `User` record** through a database relationship. An incident can reference non-existent analysts, and deleting a user leaves dangling string values.
+   - Alerts are not linked to triggering security events, and incidents are not linked to escalated alerts.
+2. **Model Status and Severity Values**:
+   - `Alert.status`: Schema defaults to `"open"`. The `AlertController` enforces domain values `['open', 'investigating', 'resolved']`.
+   - `Incident.status`: Schema defaults to `"open"`. The `IncidentController` enforces domain values `['open', 'investigating', 'contained', 'resolved', 'closed']`.
+   - `User.role`: Schema defaults to `"analyst"`. The `UserController` enforces domain values `['analyst', 'senior_analyst', 'admin']`.
+   - `SecurityEvent.severity` & `Alert.severity`: Controllers enforce `['critical', 'high', 'medium', 'low']`.
+3. **Text Primitive Typing Instead of PostgreSQL Enums**:
+   - `severity`, `status`, and `role` are stored as unconstrained `TEXT` columns in PostgreSQL. Validation is performed solely at the application controller layer.
+4. **Absence of Secondary Performance Indexes**:
    - The only non-primary-key index present is `User_email_key` (`CREATE UNIQUE INDEX "User_email_key" ON "User"("email")`).
-   - There are currently no secondary indexes on high-frequency query columns: `SecurityEvent.timestamp`, `SecurityEvent.eventType`, `Alert.status`, `Alert.severity`, or `Incident.status`. While acceptable for small MVP datasets, this is an architectural consideration for future ingestion scaling.
+   - There are currently no secondary indexes on high-frequency query columns (`timestamp`, `eventType`, `status`, `severity`). This is a potential scalability concern for future high-volume ingestion rather than a demonstrated performance failure in development.
 
 ---
 
@@ -483,40 +559,40 @@ erDiagram
 
 ```mermaid
 flowchart TD
-    subgraph Client["Frontend Client (React 18 + Vite)"]
+    subgraph Client["Frontend Client (React 18 + Vite :5173)"]
         UI["UI Pages (Desktop-Oriented)<br/>Overview | Alerts | Incidents | Events | Analytics | Analysts"]
         Nav["Navigation & Layout<br/>MainLayout | Fixed Sidebar (w-64) | Topbar (Live Clock & Polling)"]
         State["React State & Memo<br/>useState | useEffect | useMemo"]
-        Services["API Services<br/>alert | incident | securityEvent | user | health"]
+        Services["API Client Services<br/>alert | incident | securityEvent | user | health"]
         Fetch["Fetch API Wrapper<br/>api.ts"]
-        
+
         UI --> State
         Nav --> State
         State --> Services
         Services --> Fetch
     end
 
-    subgraph Server["Backend REST API (Node.js + Express)"]
+    subgraph Server["Backend REST API (Node.js + Express :5000)"]
         HTTP["Express HTTP Server<br/>server.ts :5000"]
-        MW["Security & Parsing Middleware<br/>helmet | cors (Browser Boundary Only) | morgan | express.json"]
+        MW["Security & Parsing Middleware<br/>helmet | cors (Browser Policy Only) | morgan | express.json"]
         Router["Express Routers<br/>/health | /alerts | /incidents | /security-events | /users"]
-        Controllers["Controllers<br/>Health | Alert | Incident | SecurityEvent | User"]
-        Bcrypt["bcryptjs (12 salt rounds)"]
+        Controllers["Controllers Layer<br/>Health | Alert | Incident | SecurityEvent | User"]
+        Bcrypt["Password Security<br/>bcryptjs (User Controller / Service)"]
         ServicesBackend["Backend Services<br/>Health | Alert | Incident | SecurityEvent | User"]
         PrismaClient["Prisma Client & Adapter<br/>@prisma/client + @prisma/adapter-pg"]
 
         HTTP --> MW
         MW --> Router
         Router --> Controllers
-        Controllers --> Bcrypt
         Controllers --> ServicesBackend
+        Controllers -.->|"User registration only"| Bcrypt
         ServicesBackend --> PrismaClient
     end
 
-    subgraph Storage["Database Layer (PostgreSQL)"]
-        PG[("PostgreSQL 16/17 Database<br/>Port :5432")]
+    subgraph Storage["Database Layer (PostgreSQL :5432)"]
+        PG[("PostgreSQL Database<br/>sentinelx")]
         Tables["Tables: User | Alert | Incident | SecurityEvent"]
-        
+
         PrismaClient --> PG
         PG --> Tables
     end
@@ -524,23 +600,36 @@ flowchart TD
     Fetch -->|"HTTP / REST (JSON)"| HTTP
 ```
 
+**Figure 8. SentinelX System Architecture**
+
+![Figure 8: SentinelX System Architecture](./images/sentinelx-system-architecture.png)
+
+*Note: Diagram export to be inserted after final application capture.*
+
+---
+
 ### 8.2 End-to-End Data Flow Tracing
 
-1. **Overview Dashboard Data Aggregation**:
-   - The user loads `/`.
-   - `Overview.tsx` triggers `useEffect` dispatching three parallel HTTP GET calls (`/api/alerts`, `/api/incidents`, `/api/security-events`) and two status health checks (`/api/health`, `/api/health/database`).
-   - The Express server receives the calls, validates CORS origin against `http://localhost:5173`, applies Helmet headers, and routes them to their respective controllers.
-   - The controllers query Prisma services (`AlertService.getAllAlerts()`, etc.), which invoke PostgreSQL queries (`SELECT * FROM "Alert" ORDER BY "createdAt" DESC`).
-   - The database returns rows to Prisma, which serializes them to JSON payloads wrapped in `{ success: true, data: [...] }`.
-   - The frontend receives the payloads, updates React state, and calculates the 7-day activity timeline and severity breakdown dynamically in memory. (Static KPI percentages and "Not monitored" cards are rendered alongside this dynamic data).
+1. **Overview Dashboard Telemetry Aggregation**:
+   - The user navigates to `/`.
+   - `Overview.tsx` triggers `useEffect` dispatching three parallel HTTP GET calls (`/api/alerts`, `/api/incidents`, `/api/security-events`) and two health checks (`/api/health`, `/api/health/database`).
+   - Express receives requests, applies Helmet headers, configures CORS response headers according to the configured origin, parses parameters, and routes calls to their controllers.
+   - Controllers invoke Prisma services (`AlertService.getAllAlerts()`, etc.), querying PostgreSQL (`SELECT * FROM "Alert" ORDER BY "createdAt" DESC`).
+   - PostgreSQL returns rows to Prisma, which serializes them to JSON payloads wrapped in `{ success: true, data: [...] }`.
+   - The frontend receives payloads, updates local state, and derives 7-day activity volumes and severity distribution percentages dynamically in memory. (Static KPI percentages and "Not monitored" health cards are rendered alongside this fetched data).
 2. **Incident Creation & Assignment Workflow**:
    - An analyst fills out the "Create New Incident" form on `/incidents` and clicks "Create Incident".
    - `handleCreateIncident` validates inputs in the client and dispatches `POST /api/incidents`.
-   - `IncidentController.createIncident` validates that `title`, `description`, and `severity` are non-empty strings and conform to supported severities.
-   - `IncidentService.createIncident` persists the record in PostgreSQL via `prisma.incident.create(...)`.
-   - The response returns HTTP 201 with the created record.
-   - The frontend prepends the new incident into the local `incidents` state array without requiring a full page refresh.
-   - When updating the analyst assignment, the analyst edits the `assignedTo` input and clicks "Save". The client dispatches `PATCH /api/incidents/:id`, updating the database and returning the updated incident object.
+   - `IncidentController.createIncident` validates that `title`, `description`, and `severity` are non-empty strings conforming to accepted severity arrays.
+   - `IncidentService.createIncident` persists the record via `prisma.incident.create(...)`.
+   - The response returns HTTP 201 with the created record, which is prepended into the local `incidents` state array.
+   - When updating analyst assignment, the analyst edits the `assignedTo` input and clicks "Save". The client dispatches `PATCH /api/incidents/:id`, persisting the updated string to the database and returning the updated incident object.
+
+**Figure 9. SentinelX Incident Creation and Assignment Workflow**
+
+![Figure 9: SentinelX Incident Creation and Assignment Workflow](./images/sentinelx-incident-workflow.png)
+
+*Note: Screenshot to be inserted after final application capture.*
 
 ---
 
@@ -548,18 +637,35 @@ flowchart TD
 
 ### 9.1 Implemented Security Controls
 
-- **HTTP Security Headers**: Express mounts `helmet()` which applies standard protective HTTP headers by default, including `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Strict-Transport-Security`, `X-DNS-Prefetch-Control`, and a basic `Content-Security-Policy`.
+- **HTTP Security Headers (Helmet 8.0.0)**: Express applies `helmet()` with default settings, configuring standard security headers:
+  - `Content-Security-Policy`: Default directive baseline (`default-src 'self'`). While effective as a standard starting point, default CSP directives are not necessarily tailored or sufficient for all production deployment environments without customized script and style directives.
+  - `Cross-Origin-Opener-Policy: same-origin`
+  - `Cross-Origin-Resource-Policy: same-origin`
+  - `Origin-Agent-Cluster: ?1`
+  - `Referrer-Policy: no-referrer`
+  - `Strict-Transport-Security: max-age=15552000; includeSubDomains`
+  - `X-Content-Type-Options: nosniff`
+  - `X-DNS-Prefetch-Control: off`
+  - `X-Download-Options: noopen`
+  - `X-Frame-Options: SAMEORIGIN`
+  - `X-Permitted-Cross-Domain-Policies: none`
 - **CORS Configuration (Browser Boundary Only)**: Express configures `cors({ origin: config.corsOrigin, credentials: true })`.
   > [!IMPORTANT]
-  > **CORS is a browser-enforced security mechanism, not authentication or API authorization.** CORS instructs web browsers to block untrusted web pages from reading responses across domains. It provides **zero protection against non-browser HTTP clients** (e.g., Python scripts, curl, Postman, automated scanners, or malicious tools). It cannot restrict unauthorized API calls.
-- **Cryptographic Password Hashing**: Passwords stored in `User.passwordHash` are processed with `bcryptjs` using 12 salt rounds (`bcrypt.hash(password, 12)`).
+  > **CORS is a browser-enforced security mechanism, not an authentication or API authorization control.**
+  > The CORS middleware instructs web browsers to restrict cross-origin document access. It provides **zero protection against non-browser HTTP clients** (e.g., Python scripts, curl, Postman, automated scanners, or command-line attackers). Because SentinelX currently lacks authentication tokens, any external client can issue requests directly to `http://localhost:5000/api/` and perform CRUD operations unimpeded.
+- **Cryptographic Password Hashing**: Passwords stored in `User.passwordHash` are **hashed using bcryptjs** with 12 salt rounds (`bcrypt.hash(password, 12)`).
 - **Sensitive Field Masking**: `UserService.getAllUsers()` and `getUserById()` explicitly select `id`, `name`, `email`, `role`, `createdAt`, `updatedAt`—preventing the `passwordHash` column from leaking to the frontend.
 - **Environment Isolation**: Database connection strings, server ports, and CORS origins are loaded via `.env` and kept out of version control (`.gitignore`).
 - **Prisma Parameterized Queries & Injection Mitigation**:
   > [!NOTE]
   > Prisma's model queries (`findMany`, `create`, `update`, etc.) and the tagged template `$queryRaw\`SELECT 1\`` generate **parameterized SQL queries**, separating query structure from user inputs. This provides strong defense against standard SQL injection patterns.
   > 
-  > However, this **does not claim that all SQL injection or data tampering risks are universally eliminated**. If developer changes later introduce `prisma.$queryRawUnsafe` with unescaped string concatenation, injection vulnerabilities can emerge. Furthermore, parameterized queries do not prevent business-logic injection, data pollution, or privilege abuse.
+  > However, this **does not claim that all SQL injection or data tampering risks are universally eliminated**:
+  > - If developers later introduce `prisma.$queryRawUnsafe()` using unsanitized string concatenation, SQL injection vulnerabilities can still emerge.
+  > - Parameterized queries provide zero protection against business-logic injection, data pollution, or unauthorized API access.
+- **Morgan Request Logging vs. Audit Trail**:
+  - The backend mounts `morgan('dev')` when `NODE_ENV !== 'test'`. Morgan logs transient HTTP request metadata (method, route, status code, response time) to stdout/console for debugging purposes.
+  - **Morgan is not an application audit trail.** It does not record persistent, tamper-evident domain records of who performed specific security operations (e.g., modifying an incident or deleting an alert).
 
 ### 9.2 Partially Implemented Controls
 
@@ -571,11 +677,11 @@ flowchart TD
 
 | Vulnerability / Missing Control | Severity | Location | Description & Impact |
 | :--- | :--- | :--- | :--- |
-| **Complete Lack of Authentication** | **Critical** | Backend Routes (`routes/*.ts`) | All API endpoints (`/api/alerts`, `/api/incidents`, `/api/users`, etc.) can be called by anyone without a token, API key, or session. |
+| **Complete Lack of Authentication** | **Critical** | Backend Routes (`routes/*.ts`) | All API endpoints (`/api/alerts`, `/api/incidents`, `/api/users`, etc.) lack authentication and authorization. Unauthenticated clients can access all exposed operations. |
 | **Unprotected User Registration** | **High** | `POST /api/users` | Any unauthenticated client can invoke `POST /api/users` and create an account with `role: "admin"`. |
-| **Missing Rate Limiting** | **Medium** | Global Express Pipeline (`app.ts`) | No rate-limiting middleware (e.g., `express-rate-limit`) is installed. The API is vulnerable to denial-of-service (DoS) and brute-force user creation attempts. |
-| **No Audit Trail** | **Medium** | System-wide | When an analyst deletes an alert or closes an incident, no audit log is created recording who performed the action, from what IP, or at what timestamp. |
-| **Unbounded Query Payloads** | **Medium** | `GET /api/security-events` | Queries fetch entire database tables without pagination. A large volume of security events will exhaust Node.js memory. |
+| **Missing Rate Limiting** | **Medium** | Global Express Pipeline (`app.ts`) | No rate-limiting middleware (e.g., `express-rate-limit`) is installed. Missing rate limiting increases exposure to automated abuse and request flooding, though it does not demonstrate a successful denial-of-service attack on its own. |
+| **No Audit Trail** | **Medium** | System-wide | When an analyst deletes an alert or closes an incident, no permanent audit record is created capturing analyst identity, IP address, or timestamps. |
+| **Unbounded Query Payloads** | **Medium** | `GET /api/security-events` | Queries fetch entire database tables without pagination. As event volume scales, unpaginated queries can increase memory consumption, database workload, and response times. |
 
 ---
 
@@ -585,11 +691,11 @@ flowchart TD
 
 A clear distinction must be made between compile-time build verification and runtime integration testing:
 - **Verified Compile-Time Builds**:
-  - **Backend Build (`npm run build` in `backend/`)**: Compiles TypeScript via `tsc` using `NodeNext` module resolution. Successfully generated JavaScript in `dist/` with **0 type errors**.
-  - **Frontend Build (`npm run build` in `frontend/`)**: Compiles via `tsc -b && vite build`. Successfully generated production bundle in `dist/` in **16.38s** transforming 1,990 modules.
+  - **Backend Build (`npm run build` in `backend/`)**: Compiles TypeScript via `tsc` using `NodeNext` module resolution. Successfully generated JavaScript in `dist/` with **0 type errors** in 8.2 seconds.
+  - **Frontend Build (`npm run build` in `frontend/`)**: Compiles via `tsc -b && vite build`. Successfully generated production bundle in `dist/` in **16.38s** transforming 1,990 modules with **0 type errors**.
 - **Unverified Runtime Behavior**:
-  - **No live PostgreSQL database** was connected during the audit. Database connectivity, migration application on a running engine, live query latency, and runtime Prisma adapter behavior remain **unverified at runtime**.
-  - **No automated test suite** (Vitest/Supertest) exists in the repository to assert API contracts or integration behavior automatically.
+  - **No live PostgreSQL database** was connected during the audit. Database connectivity, migration application on a running engine, live query latency, and runtime Prisma adapter behavior remain **unverified during this documented audit**.
+  - **No automated test suite** (Vitest/Supertest) or test files exist in the repository to assert API contracts or integration behavior automatically. Testing represents a planned future capability.
 
 ### 10.2 Technical Debt & Build Warnings
 
@@ -615,16 +721,16 @@ Evaluation against the 11 Core Modules and 5 Attack Scenarios defined in the pro
 
 | # | Module Name | Implementation Status | Technical Details & Evidence |
 | :---: | :--- | :--- | :--- |
-| **1** | **Authentication & Role-Based Access Control** | **Partially Implemented** | Passwords hashed with `bcryptjs`; roles (`analyst`, `senior_analyst`, `admin`) stored in DB; **Missing**: JWT generation, login endpoint, auth middleware, and route protection. |
-| **2** | **Security Overview Dashboard** | **Implemented** | `Overview.tsx` renders live KPI metrics, 7-day activity area chart, severity donut distribution, recent alerts table, and system health status. (Static percentage changes and unmonitored cards noted). |
-| **3** | **Security Event & Log Explorer** | **Implemented** | `SecurityEvents.tsx` provides live log exploration, search by event/IP, severity filtering, and summary counters. |
+| **1** | **Authentication & Role-Based Access Control** | **Partially Implemented** | Passwords hashed using `bcryptjs`; roles (`analyst`, `senior_analyst`, `admin`) stored in DB; **Missing**: JWT generation, login endpoint, auth middleware, and route protection. |
+| **2** | **Security Overview Dashboard** | **Implemented** | `Overview.tsx` renders database-backed KPI metrics, 7-day activity area chart, severity donut distribution, recent alerts table, and health check requests. (Static percentage changes and unmonitored cards noted). |
+| **3** | **Security Event & Log Explorer** | **Implemented** | `SecurityEvents.tsx` provides database-backed security event exploration, multi-field search, severity filtering, and summary counters. |
 | **4** | **Simulated Security Event Generator** | **Not Implemented** | No background event generation daemon, script, or ingestion simulation pipeline exists in the codebase. |
 | **5** | **Rule-Based Threat Detection Engine** | **Not Implemented** | Alerts are only created via manual POST requests. No rule engine or pattern evaluation logic matches events against thresholds. |
 | **6** | **Security Alerts Management** | **Partially Implemented** | **Backend API**: Fully Implemented (full CRUD `/api/alerts`).<br/>**Frontend UI**: Read-Only Listing (lists alerts, computes unresolved counts in `Topbar.tsx`; no creation, editing, status change, or deletion UI). |
 | **7** | **Incident Management & Investigation** | **Implemented** | Full backend CRUD (`/api/incidents`); frontend provides incident creation modal, inline status modification, and inline analyst assignment. |
 | **8** | **Asset & Endpoint Inventory** | **Not Implemented** | No database model, API endpoint, or frontend interface exists for asset/host management. |
 | **9** | **MITRE ATT&CK Technique Mapping** | **Not Implemented** | No MITRE tactics, techniques, or matrix visualization components exist in schema or code. |
-| **10** | **Reports & Threat Analytics** | **Partially Implemented** | `Analytics.tsx` provides interactive threat charts, category breakdown, and severity trends. PDF/CSV report generation is absent. |
+| **10** | **Reports & Threat Analytics** | **Partially Implemented** | `Analytics.tsx` provides threat charts, category breakdown, and severity trends based on fetched records. Exportable PDF/CSV reporting is absent. |
 | **11** | **Audit Logs** | **Not Implemented** | No audit trail table, middleware, or UI tracks administrative actions or state changes. |
 
 ### 11.2 Simulated Attack Scenarios Status
@@ -641,23 +747,23 @@ Evaluation against the 11 Core Modules and 5 Attack Scenarios defined in the pro
 
 ## 12. Technical Strengths
 
-1. **Clean Layered Architecture**: The backend adheres to strict separation of concerns (`routes/` → `controllers/` → `services/` → `lib/prisma.ts`).
-2. **Modern TypeScript & ESM**: Backend uses NodeNext module resolution with `.js` import specifiers and strict TypeScript typechecking without `any` bypasses.
+1. **Layered Separation of Concerns**: The backend adheres to layered separation of concerns (`routes/` → `controllers/` → `services/` → `lib/prisma.ts`).
+2. **Modern TypeScript & ESM**: Backend uses NodeNext module resolution with `.js` import specifiers. Hand-written application controllers and services use explicit TypeScript types and interfaces, with `strict: true` enabled in `tsconfig.json`.
 3. **SOC-Themed Dark Design System**: The frontend features a cohesive dark palette (`#080D18`, `#0B1220`) tailored for desktop SOC workstation screens, with Recharts data visualizations and Lucide iconography.
-4. **Dynamic Telemetry Derivation**: Primary dashboard metrics, severity percentages, top threat categories, and activity trends are computed dynamically from real database records.
-5. **Modern Prisma 7 Integration**: Utilizes Prisma's latest `@prisma/adapter-pg` driver adapter with native connection pooling support.
+4. **Dynamic Telemetry Derivation**: Primary dashboard metrics, severity percentages, top threat categories, and activity trends are computed dynamically from fetched database records.
+5. **Modern Prisma 7 Integration**: Utilizes Prisma's latest `@prisma/adapter-pg` driver adapter, which connects to PostgreSQL using the standard `pg` driver and its connection pool.
 
 ---
 
 ## 13. Current Limitations
 
 1. **No Automated Threat Pipeline**: Events and alerts are static database entities; there is no event generator creating simulated telemetry and no detection engine translating events into alerts.
-2. **Unauthenticated API**: All endpoints are public; any client can view, create, modify, or delete incidents and analysts.
-3. **CORS Misconception**: CORS protects only against browser cross-origin requests and does not serve as an authorization barrier for the API.
-4. **Desktop-Only Layout**: The layout uses a fixed 256px sidebar and does not adapt gracefully to mobile screen sizes.
+2. **Unauthenticated API**: All API endpoints lack authentication and authorization. Unauthenticated clients can access the operations exposed by each endpoint, including creating user accounts with assigned roles and creating, updating, or deleting alerts and incidents. (Note: users cannot be updated or deleted via API because no such endpoints exist).
+3. **CORS Misconception**: CORS middleware configures headers according to the configured origin; browsers enforce cross-origin restrictions. It is not API authentication or authorization and does not protect against non-browser clients.
+4. **Desktop-Oriented Layout**: The layout uses a fixed 256px sidebar and does not adapt gracefully to mobile screen sizes.
 5. **Frontend Alert Mutation Void**: Despite full backend CRUD support for alerts, the frontend provides only a read-only table.
-6. **Absence of Foreign Keys**: Database tables have no relational integrity constraints connecting Users, Alerts, and Incidents.
-7. **In-Memory Filtering & No Pagination**: Queries load entire database tables into browser memory, creating scalability bottlenecks.
+6. **Absence of Foreign Keys**: Database tables have no relational integrity constraints connecting Users, Alerts, and Incidents. `Incident.assignedTo` is an unconstrained string field not linked to a `User` record.
+7. **In-Memory Filtering & No Pagination**: Security-event filtering occurs in frontend memory after records are retrieved from the backend. Unpaginated queries risk increasing server memory consumption, database workload, and response times as data scales.
 8. **Error Handling Inconsistencies**: Discordance between controller error envelopes (`{ success, message }`) and middleware error envelopes (`{ success, error: { message } }`).
 9. **Navigation Glitch in Topbar**: `window.location.href` is used instead of client-side routing in the notification drawer.
 
@@ -666,8 +772,8 @@ Evaluation against the 11 Core Modules and 5 Attack Scenarios defined in the pro
 ## 14. Recommended Future Improvements
 
 ### Priority 1: Security & Identity
-- Implement JWT-based authentication (`POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`).
-- Create an authentication middleware (`verifyToken`) and RBAC authorization guard (`requireRole(['admin', 'senior_analyst'])`).
+- Implement JWT-based authentication (`POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`). For logout, implement a token-handling strategy, such as clearing an HTTP-only authentication cookie or maintaining a token revocation list.
+- Create an authentication middleware (`verifyToken`) and RBAC authorization guard (`requireRole(['admin', 'senior_analyst'])`). Note that frontend route guards do not secure backend APIs; backend authentication and authorization middleware must enforce access restrictions.
 - Protect frontend routes with an `<AuthGuard>` wrapper.
 
 ### Priority 2: Relational Integrity & Schema Normalization
@@ -683,9 +789,9 @@ Evaluation against the 11 Core Modules and 5 Attack Scenarios defined in the pro
 
 ### Priority 4: Performance & Code Quality
 - Add Alert creation, status transition, and deletion UI controls in `Alerts.tsx`.
-- Implement server-side pagination (`limit`, `offset`, `cursor`) on `/api/security-events` and `/api/alerts`.
+- Implement offset pagination on `/api/security-events` and `/api/alerts` for the current MVP, with cursor-based pagination as a possible future enhancement for streaming event logs.
 - Add code-splitting (`React.lazy`) in `App.tsx` to reduce the 665 kB bundle size.
-- Set up an automated testing suite using Vitest and Supertest.
+- Set up an automated testing suite using Vitest for unit tests and Supertest for API integration tests.
 - Implement responsive drawer navigation for mobile viewports.
 
 ---
@@ -696,5 +802,5 @@ When preparing the final academic report, emphasize the following points:
 
 1. **Portfolio vs. Enterprise Context**: SentinelX functions as an educational SIEM prototype demonstrating full-stack telemetry visualization, incident lifecycle management, and relational SOC workflows. It does not replace an enterprise SIEM (e.g., Splunk, Microsoft Sentinel).
 2. **Technical Architecture Alignment**: Highlight the layered architecture, clean REST design, TypeScript type safety across both tiers, and database abstraction using Prisma ORM with PostgreSQL.
-3. **Data Authenticity vs. UI Artifacts**: Accurately explain that core metrics, chart trends, and tables reflect real database queries, while percentage changes and secondary monitoring cards are static placeholders.
-4. **Engineering Honesty Regarding MVP Scope**: Accurately describe the current implementation state: the UI, API, and database schemas compile cleanly, while runtime database behavior, dynamic detection rules, authentication gates, and attack simulation scripts represent the next phase of the project roadmap.
+3. **Data Authenticity vs. UI Artifacts**: Accurately explain that core metrics, chart trends, and tables reflect database-backed API queries, while percentage comparisons and secondary monitoring cards are static placeholders.
+4. **Engineering Honesty Regarding MVP Scope**: The frontend and backend production builds complete successfully. The Prisma-based database schema and application integration are part of the implemented architecture; however, live database connectivity and runtime integration were not verified during this audit. Authentication, automated threat detection, and attack simulation remain planned enhancements.
