@@ -34,3 +34,9 @@ logs/
 # Prisma
 *.db
 *.db-journal
+
+# Local AI coding tool configuration
+.agents/
+.claude/
+.windsurf/
+skills-lock.json
